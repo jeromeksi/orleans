@@ -1,11 +1,7 @@
-using System;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orleans.Configuration;
-using Orleans.Hosting;
 using Orleans.Providers;
-using Orleans.Runtime;
 using Orleans.Runtime.Hosting;
 using Orleans.Storage;
 
@@ -65,5 +61,5 @@ namespace Orleans.Hosting
             services.AddTransient<IConfigurationValidator>(sp => new AdoNetGrainStorageOptionsValidator(sp.GetRequiredService<IOptionsMonitor<AdoNetGrainStorageOptions>>().Get(name), name));
             return services.AddGrainStorage(name, AdoNetGrainStorageFactory.Create);
         }
-    } 
+    }
 }

@@ -1,5 +1,3 @@
-using System;
-
 namespace Orleans.Storage
 {
     // Based on the version in http://home.comcast.net/~bretm/hash/7.html, which is based on that

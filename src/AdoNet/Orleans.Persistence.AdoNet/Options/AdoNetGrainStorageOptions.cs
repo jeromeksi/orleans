@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
 using Orleans.Persistence.AdoNet.Storage;
-using Orleans.Runtime;
 using Orleans.Storage;
 
 namespace Orleans.Configuration

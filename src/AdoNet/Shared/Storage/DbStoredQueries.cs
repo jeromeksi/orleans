@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Net;
 using System.Reflection;
-using Orleans.Runtime;
 
 #nullable disable
 
@@ -29,7 +25,7 @@ namespace Orleans.Tests.SqlUtils
 {
     /// <summary>
     /// This class implements the expected contract between Orleans and the underlying relational storage.
-    /// It makes sure all the stored queries are present and 
+    /// It makes sure all the stored queries are present and
     /// </summary>
     internal class DbStoredQueries
     {
@@ -58,17 +54,17 @@ namespace Orleans.Tests.SqlUtils
 
         /// <summary>
         /// A query template to retrieve gateway URIs.
-        /// </summary>        
+        /// </summary>
         internal string GatewaysQueryKey => queries[nameof(GatewaysQueryKey)];
 
         /// <summary>
         /// A query template to retrieve a single row of membership data.
-        /// </summary>        
+        /// </summary>
         internal string MembershipReadRowKey => queries[nameof(MembershipReadRowKey)];
 
         /// <summary>
         /// A query template to retrieve all membership data.
-        /// </summary>        
+        /// </summary>
         internal string MembershipReadAllKey => queries[nameof(MembershipReadAllKey)];
 
         /// <summary>
@@ -211,7 +207,7 @@ namespace Orleans.Tests.SqlUtils
 
             internal static Tuple<MembershipEntry, int> GetMembershipEntry(IDataRecord record)
             {
-                //TODO: This is a bit of hack way to check in the current version if there's membership data or not, but if there's a start time, there's member.            
+                //TODO: This is a bit of hack way to check in the current version if there's membership data or not, but if there's a start time, there's member.
                 DateTime? startTime = record.GetDateTimeValueOrDefault(nameof(Columns.StartTime));
                 MembershipEntry entry = null;
                 if (startTime.HasValue)
