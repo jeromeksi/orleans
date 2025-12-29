@@ -70,29 +70,22 @@ namespace Orleans.Storage
     /// </para>
     /// </remarks>
     [DebuggerDisplay("Name = {Name}, ConnectionString = {Storage.ConnectionString}")]
-    public partial class AdoNetGrainStorage : IGrainStorage, ILifecycleParticipant<ISiloLifecycle>
+    public partial class AdoNetGrainStorage(
+        IActivatorProvider activatorProvider,
+        ILogger<AdoNetGrainStorage> logger,
+        IOptions<AdoNetGrainStorageOptions> options,
+        IOptions<ClusterOptions> clusterOptions,
+        string name)
+        : IGrainStorage, ILifecycleParticipant<ISiloLifecycle>
     {
-        public IGrainStorageSerializer Serializer { get; set; }
-
-        /// <summary>
-        /// Tag for BinaryFormatSerializer
-        /// </summary>
-        public const string BinaryFormatSerializerTag = "BinaryFormatSerializer";
-        /// <summary>
-        /// Tag for JsonFormatSerializer
-        /// </summary>
-        public const string JsonFormatSerializerTag = "JsonFormatSerializer";
-        /// <summary>
-        /// Tag for XmlFormatSerializer
-        /// </summary>
-        public const string XmlFormatSerializerTag = "XmlFormatSerializer";
+        public IGrainStorageSerializer Serializer { get; set; } = options.Value.GrainStorageSerializer;
 
         /// <summary>
         /// The Service ID for which this relational provider is used.
         /// </summary>
-        private readonly string serviceId;
-        private readonly IActivatorProvider _activatorProvider;
-        private readonly ILogger logger;
+        private readonly string serviceId = clusterOptions.Value.ServiceId;
+
+        private readonly ILogger logger = logger;
 
         /// <summary>
         /// The storage used for back-end operations.
@@ -104,46 +97,26 @@ namespace Orleans.Storage
         /// that is either <see cref="Type.AssemblyQualifiedName"/> or <see cref="Type.FullName"/>.
         /// <see cref="ExtractBaseClass(string)"/>.
         /// </summary>
-        private static char[] BaseClassExtractionSplitDelimeters { get; } = new[] { '[', ']' };
-
+        private static char[] BaseClassExtractionSplitDelimeters { get; } = ['[', ']'];
         /// <summary>
         /// The default query to initialize this structure from the Orleans database.
         /// </summary>
-        public const string DefaultInitializationQuery = "SELECT QueryKey, QueryText FROM OrleansQuery WHERE QueryKey = 'WriteToStorageKey' OR QueryKey = 'ReadFromStorageKey' OR QueryKey = 'ClearStorageKey'";
+        private const string DefaultInitializationQuery = "SELECT QueryKey, QueryText FROM OrleansQuery WHERE QueryKey = 'WriteToStorageKey' OR QueryKey = 'ReadFromStorageKey' OR QueryKey = 'ClearStorageKey'";
 
         /// <summary>
         /// The queries currently used. When this is updated, the new queries will take effect immediately.
         /// </summary>
-        public RelationalStorageProviderQueries CurrentOperationalQueries { get; set; }
+        private RelationalStorageProviderQueries CurrentOperationalQueries { get; set; }
 
         /// <summary>
         /// The hash generator used to hash natural keys, grain ID and grain type to a more narrow index.
         /// </summary>
-        public IStorageHasherPicker HashPicker { get; set; }
+        public IStorageHasherPicker HashPicker { get; set; } = options.Value.HashPicker ?? new StorageHasherPicker([new OrleansDefaultHasher()
+        ]);
 
-        private readonly AdoNetGrainStorageOptions options;
-        private readonly string name;
+        private readonly AdoNetGrainStorageOptions options = options.Value;
 
-        public AdoNetGrainStorage(
-            IActivatorProvider activatorProvider,
-            ILogger<AdoNetGrainStorage> logger,
-            IOptions<AdoNetGrainStorageOptions> options,
-            IOptions<ClusterOptions> clusterOptions,
-            string name)
-        {
-            this.options = options.Value;
-            this.name = name;
-            _activatorProvider = activatorProvider;
-            this.logger = logger;
-            this.serviceId = clusterOptions.Value.ServiceId;
-            this.Serializer = options.Value.GrainStorageSerializer;
-            this.HashPicker = options.Value.HashPicker ?? new StorageHasherPicker(new[] { new OrleansDefaultHasher() });
-        }
-
-        public void Participate(ISiloLifecycle lifecycle)
-        {
-            lifecycle.Subscribe(OptionFormattingUtilities.Name<AdoNetGrainStorage>(this.name), this.options.InitStage, Init, Close);
-        }
+        public void Participate(ISiloLifecycle lifecycle) => lifecycle.Subscribe(OptionFormattingUtilities.Name<AdoNetGrainStorage>(name), options.InitStage, Init, Close);
 
         /// <summary>Clear state data function for this storage provider.</summary>
         /// <see cref="IGrainStorage.ClearStateAsync{T}"/>.
@@ -167,8 +140,8 @@ namespace Orleans.Storage
             string storageVersion = null;
             try
             {
-                var grainIdHash = HashPicker.PickHasher(serviceId, this.name, baseGrainType, grainReference, grainState).Hash(grainId.GetHashBytes());
-                var grainTypeHash = HashPicker.PickHasher(serviceId, this.name, baseGrainType, grainReference, grainState).Hash(Encoding.UTF8.GetBytes(baseGrainType));
+                var grainIdHash = HashPicker.PickHasher(serviceId, name, baseGrainType, grainReference, grainState).Hash(grainId.GetHashBytes());
+                var grainTypeHash = HashPicker.PickHasher(serviceId, name, baseGrainType, grainReference, grainState).Hash(Encoding.UTF8.GetBytes(baseGrainType));
                 var clearRecord = (await Storage.ReadAsync(CurrentOperationalQueries.ClearState, command =>
                 {
                     command.AddParameter("GrainIdHash", grainIdHash);
@@ -189,7 +162,7 @@ namespace Orleans.Storage
             }
 
             const string OperationString = "ClearState";
-            var inconsistentStateException = CheckVersionInconsistency(OperationString, serviceId, this.name, storageVersion, grainState.ETag, baseGrainType, grainId.ToString());
+            var inconsistentStateException = CheckVersionInconsistency(OperationString, serviceId, name, storageVersion, grainState.ETag, baseGrainType, grainId.ToString());
             if (inconsistentStateException != null)
             {
                 throw inconsistentStateException;
@@ -216,8 +189,8 @@ namespace Orleans.Storage
             try
             {
                 var commandBehavior = CommandBehavior.Default;
-                var grainIdHash = HashPicker.PickHasher(serviceId, this.name, baseGrainType, grainReference, grainState).Hash(grainId.GetHashBytes());
-                var grainTypeHash = HashPicker.PickHasher(serviceId, this.name, baseGrainType, grainReference, grainState).Hash(Encoding.UTF8.GetBytes(baseGrainType));
+                var grainIdHash = HashPicker.PickHasher(serviceId, name, baseGrainType, grainReference, grainState).Hash(grainId.GetHashBytes());
+                var grainTypeHash = HashPicker.PickHasher(serviceId, name, baseGrainType, grainReference, grainState).Hash(Encoding.UTF8.GetBytes(baseGrainType));
                 var readRecords = (await Storage.ReadAsync(
                     CurrentOperationalQueries.ReadFromStorage,
                     command =>
@@ -282,11 +255,11 @@ namespace Orleans.Storage
             string storageVersion = null;
             try
             {
-                var grainIdHash = HashPicker.PickHasher(serviceId, this.name, baseGrainType, grainReference, grainState).Hash(grainId.GetHashBytes());
-                var grainTypeHash = HashPicker.PickHasher(serviceId, this.name, baseGrainType, grainReference, grainState).Hash(Encoding.UTF8.GetBytes(baseGrainType));
+                var grainIdHash = HashPicker.PickHasher(serviceId, name, baseGrainType, grainReference, grainState).Hash(grainId.GetHashBytes());
+                var grainTypeHash = HashPicker.PickHasher(serviceId, name, baseGrainType, grainReference, grainState).Hash(Encoding.UTF8.GetBytes(baseGrainType));
                 var writeRecord = await Storage.ReadAsync(CurrentOperationalQueries.WriteToStorage, command =>
                 {
-                    var serialized = this.Serializer.Serialize<T>(grainState.State);
+                    var serialized = Serializer.Serialize<T>(grainState.State);
 
                     command.AddParameter("GrainIdHash", grainIdHash);
                     command.AddParameter("GrainIdN0", grainId.N0Key);
@@ -308,7 +281,7 @@ namespace Orleans.Storage
             }
 
             const string OperationString = "WriteState";
-            var inconsistentStateException = CheckVersionInconsistency(OperationString, serviceId, this.name, storageVersion, grainState.ETag, baseGrainType, grainId.ToString());
+            var inconsistentStateException = CheckVersionInconsistency(OperationString, serviceId, name, storageVersion, grainState.ETag, baseGrainType, grainId.ToString());
             if (inconsistentStateException != null)
             {
                 throw inconsistentStateException;
@@ -345,10 +318,7 @@ namespace Orleans.Storage
         /// <summary>
         /// Close this provider
         /// </summary>
-        private Task Close(CancellationToken token)
-        {
-            return Task.CompletedTask;
-        }
+        private Task Close(CancellationToken token) => Task.CompletedTask;
 
         /// <summary>
         /// Checks for version inconsistency as defined in the database scripts.
@@ -385,21 +355,12 @@ namespace Orleans.Storage
         /// </summary>
         /// <returns>The grain ID as a string.</returns>
         /// <remarks>This likely should exist in Orleans core in more optimized form.</remarks>
-        private static AdoGrainKey GrainIdAndExtensionAsString(GrainId grainId)
+        private static AdoGrainKey GrainIdAndExtensionAsString(GrainId grainId) => grainId switch
         {
-            string keyExt;
-            if (grainId.TryGetGuidKey(out var guid, out keyExt))
-            {
-                return new AdoGrainKey(guid, keyExt);
-            }
-
-            if (grainId.TryGetIntegerKey(out var integer, out keyExt))
-            {
-                return new AdoGrainKey(integer, keyExt);
-            }
-
-            return new AdoGrainKey(grainId.Key.ToString());
-        }
+            _ when grainId.TryGetGuidKey(out var g, out var e) => new AdoGrainKey(g, e),
+            _ when grainId.TryGetIntegerKey(out var i, out var e) => new AdoGrainKey(i, e),
+            _ => new AdoGrainKey(grainId.Key.ToString())
+        };
 
         /// <summary>
         /// Extracts a base class from a string that is either <see cref="Type.AssemblyQualifiedName"/> or
@@ -462,7 +423,7 @@ namespace Orleans.Storage
             }
         }
 
-        private T CreateInstance<T>() => _activatorProvider.GetActivator<T>().Create();
+        private T CreateInstance<T>() => activatorProvider.GetActivator<T>().Create();
 
         [LoggerMessage(
             EventId = (int)RelationalStorageProviderCodes.RelationalProviderClearing,

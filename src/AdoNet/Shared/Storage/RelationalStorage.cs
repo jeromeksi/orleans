@@ -61,25 +61,13 @@ namespace Orleans.Tests.SqlUtils
         /// <summary>
         /// The invariant name of the connector for this database.
         /// </summary>
-        public string InvariantName
-        {
-            get
-            {
-                return _invariantName;
-            }
-        }
+        public string InvariantName => _invariantName;
 
 
         /// <summary>
         /// The connection string used to connect to the database.
         /// </summary>
-        public string ConnectionString
-        {
-            get
-            {
-                return _connectionString;
-            }
-        }
+        public string ConnectionString => _connectionString;
 
 
         /// <summary>
@@ -209,11 +197,11 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="connectionString">The connection string this database should use for database operations.</param>
         private RelationalStorage(string invariantName, string connectionString)
         {
-            this._connectionString = connectionString;
-            this._invariantName = invariantName;
+            _connectionString = connectionString;
+            _invariantName = invariantName;
             _supportsCommandCancellation = DbConstantsStore.SupportsCommandCancellation(InvariantName);
             _isSynchronousAdoNetImplementation = DbConstantsStore.IsSynchronousAdoNetImplementation(InvariantName);
-            this._databaseCommandInterceptor = DbConstantsStore.GetDatabaseCommandInterceptor(InvariantName);
+            _databaseCommandInterceptor = DbConstantsStore.GetDatabaseCommandInterceptor(InvariantName);
         }
 
         private static async Task<Tuple<IEnumerable<TResult>, int>> SelectAsync<TResult>(DbDataReader reader, Func<IDataReader, int, CancellationToken, Task<TResult>> selector, CancellationToken cancellationToken)
@@ -251,7 +239,7 @@ namespace Orleans.Tests.SqlUtils
                 }
                 finally
                 {
-                    cancellationRegistration.Dispose();
+                    await cancellationRegistration.DisposeAsync();
                 }
             }
         }

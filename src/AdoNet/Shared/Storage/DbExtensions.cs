@@ -32,7 +32,8 @@ namespace Orleans.Tests.SqlUtils
         /// <summary>
         /// An explicit map of type CLR viz database type conversions.
         /// </summary>
-        private static readonly ReadOnlyDictionary<Type, DbType> typeMap = new ReadOnlyDictionary<Type, DbType>(new Dictionary<Type, DbType>
+        private static readonly ReadOnlyDictionary<Type, DbType> typeMap = new(
+            new Dictionary<Type, DbType>
         {
             { typeof(object),   DbType.Object },
             { typeof(int),      DbType.Int32 },
@@ -94,7 +95,10 @@ namespace Orleans.Tests.SqlUtils
             parameter.Value = (object)value ?? DBNull.Value;
             parameter.DbType = dbType ?? typeMap[typeof(T)];
             parameter.Direction = direction;
-            if (size != null) { parameter.Size = size.Value; }
+            if (size.HasValue)
+            {
+                parameter.Size = size.Value;
+            }
 
             return parameter;
         }
@@ -110,9 +114,7 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="size">The size of the parameter value.</param>
         /// <param name="dbType">the <see cref="DbType"/> of the parameter.</param>
         public static void AddParameter<T>(this IDbCommand command, string parameterName, T value, ParameterDirection direction = ParameterDirection.Input, int? size = null, DbType? dbType = null)
-        {
-            command.Parameters.Add(command.CreateParameter(direction, parameterName, value, size));
-        }
+            => command.Parameters.Add(command.CreateParameter(direction, parameterName, value, size));
 
         /// <summary>
         /// Returns a value if it is not <see cref="System.DBNull"/>, <em>default(TValue)</em> otherwise.
@@ -125,7 +127,6 @@ namespace Orleans.Tests.SqlUtils
         /// <remarks>This function throws if the given <see paramref="fieldName"/> does not exist.</remarks>
         public static TValue GetValueOrDefault<TValue>(this IDataRecord record, string fieldName, TValue @default = default)
         {
-
             try
             {
                 var ordinal = record.GetOrdinal(fieldName);
@@ -194,11 +195,8 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="ordinal">The ordinal of the fieldname.</param>
         /// <param name="default">The default value if value in position is <see cref="System.DBNull"/>.</param>
         /// <returns>Either the given value or the default for the requested type.</returns>
-        /// <exception cref="IndexOutOfRangeException"/>                
-        public static TValue GetValueOrDefault<TValue>(this IDataRecord record, int ordinal, TValue @default = default)
-        {
-            return record.IsDBNull(ordinal) ? @default : (TValue)record.GetValue(ordinal);
-        }
+        /// <exception cref="IndexOutOfRangeException"/>
+        public static TValue GetValueOrDefault<TValue>(this IDataRecord record, int ordinal, TValue @default = default) => record.IsDBNull(ordinal) ? @default : (TValue)record.GetValue(ordinal);
 
 
         /// <summary>
@@ -209,12 +207,8 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="ordinal">The ordinal of the fieldname.</param>
         /// <param name="default">The default value if value in position is <see cref="System.DBNull"/>.</param>
         /// <returns>Either the given value or the default for the requested type.</returns>
-        /// <exception cref="IndexOutOfRangeException"/>                
-        public static async Task<TValue> GetValueOrDefaultAsync<TValue>(this DbDataReader record, int ordinal, TValue @default = default)
-        {
-
-            return (await record.IsDBNullAsync(ordinal).ConfigureAwait(false)) ? @default : (await record.GetFieldValueAsync<TValue>(ordinal).ConfigureAwait(false));
-        }
+        /// <exception cref="IndexOutOfRangeException"/>
+        public static async Task<TValue> GetValueOrDefaultAsync<TValue>(this DbDataReader record, int ordinal, TValue @default = default) => (await record.IsDBNullAsync(ordinal).ConfigureAwait(false)) ? @default : (await record.GetFieldValueAsync<TValue>(ordinal).ConfigureAwait(false));
 
 
         /// <summary>
@@ -225,7 +219,7 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="fieldName">The name of the field.</param>
         /// <returns>Value in the given field indicated by <see paramref="fieldName"/>.</returns>
         /// <exception cref="DataException"/>
-        /// <remarks>This function throws if the given <see paramref="fieldName"/> does not exist.</remarks>        
+        /// <remarks>This function throws if the given <see paramref="fieldName"/> does not exist.</remarks>
         public static TValue GetValue<TValue>(this IDataRecord record, string fieldName)
         {
             try
@@ -335,7 +329,7 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="cancellationToken">The cancellation token. Defaults to <see cref="CancellationToken.None"/>.</param>
         /// <returns>Value in the given field indicated by <see paramref="fieldName"/>.</returns>
         /// <exception cref="DataException"/>
-        /// <remarks>This function throws if the given <see paramref="fieldName"/> does not exist.</remarks>        
+        /// <remarks>This function throws if the given <see paramref="fieldName"/> does not exist.</remarks>
         public static async Task<TValue> GetValueAsync<TValue>(this DbDataReader record, string fieldName, CancellationToken cancellationToken = default)
         {
             try
@@ -391,7 +385,7 @@ namespace Orleans.Tests.SqlUtils
         {
             //This is done like this in order to box value types.
             //Otherwise property.SetValue() would have a copy of the struct, which would
-            //get garbage collected. Consequently the original struct value would not be set.            
+            //get garbage collected. Consequently the original struct value would not be set.
             object obj = Activator.CreateInstance<TResult>();
             var properties = obj.GetType().GetProperties();
             for (int i = 0; i < properties.Length; ++i)

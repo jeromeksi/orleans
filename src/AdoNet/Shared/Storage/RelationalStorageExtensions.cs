@@ -33,7 +33,7 @@ namespace Orleans.Tests.SqlUtils
         /// <summary>
         /// Used to format .NET objects suitable to relational database format.
         /// </summary>
-        private static readonly AdoNetFormatProvider adoNetFormatProvider = new AdoNetFormatProvider();
+        private static readonly AdoNetFormatProvider adoNetFormatProvider = new();
 
         /// <summary>
         /// This is a template to produce query parameters that are indexed.
@@ -160,9 +160,7 @@ namespace Orleans.Tests.SqlUtils
         /// <typeparam name="TResult"></typeparam>
         /// <returns></returns>
         public static Task<IEnumerable<TResult>> ReadAsync<TResult>(this IRelationalStorage storage, string query, Func<IDataRecord, TResult> selector, Action<IDbCommand> parameterProvider)
-        {
-            return storage.ReadAsync(query, parameterProvider, (record, i, cancellationToken) => Task.FromResult(selector(record)));
-        }
+            => storage.ReadAsync(query, parameterProvider, (record, i, cancellationToken) => Task.FromResult(selector(record)));
 
         /// <summary>
         /// Uses <see cref="IRelationalStorage"/> with <see cref="DbExtensions.ReflectionParameterProvider{T}(IDbCommand, T, IReadOnlyDictionary{string, string})"/>.
@@ -208,10 +206,7 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="query">Executes a given statement. Especially intended to use with <em>SELECT</em> statement, but works with other queries too.</param>
         /// <param name="cancellationToken">The cancellation token. Defaults to <see cref="CancellationToken.None"/>.</param>
         /// <returns>A list of objects as a result of the <see paramref="query"/>.</returns>
-        public static Task<IEnumerable<TResult>> ReadAsync<TResult>(this IRelationalStorage storage, string query, CancellationToken cancellationToken = default)
-        {
-            return ReadAsync<TResult>(storage, query, null, cancellationToken);
-        }
+        public static Task<IEnumerable<TResult>> ReadAsync<TResult>(this IRelationalStorage storage, string query, CancellationToken cancellationToken = default) => ReadAsync<TResult>(storage, query, null, cancellationToken);
 
 
         /// <summary>
@@ -250,10 +245,7 @@ namespace Orleans.Tests.SqlUtils
         /// <param name="query">Executes a given statement. Especially intended to use with <em>INSERT</em>, <em>UPDATE</em>, <em>DELETE</em> or <em>DDL</em> queries.</param>
         /// <param name="cancellationToken">The cancellation token. Defaults to <see cref="CancellationToken.None"/>.</param>
         /// <returns>Affected rows count.</returns>
-        public static Task<int> ExecuteAsync(this IRelationalStorage storage, string query, CancellationToken cancellationToken = default)
-        {
-            return ExecuteAsync(storage, query, null, cancellationToken);
-        }
+        public static Task<int> ExecuteAsync(this IRelationalStorage storage, string query, CancellationToken cancellationToken = default) => ExecuteAsync(storage, query, null, cancellationToken);
 
 
         /// <summary>

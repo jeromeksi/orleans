@@ -7,17 +7,8 @@ namespace Orleans.Storage
     /// <summary>
     /// Orleans v3-compatible hasher implementation for string-only grain key ids.
     /// </summary>
-    internal class Orleans3CompatibleStringKeyHasher : IHasher
+    internal class Orleans3CompatibleStringKeyHasher(Orleans3CompatibleHasher innerHasher, string grainType) : IHasher
     {
-        private readonly Orleans3CompatibleHasher _innerHasher;
-        private readonly string _grainType;
-
-        public Orleans3CompatibleStringKeyHasher(Orleans3CompatibleHasher innerHasher, string grainType)
-        {
-            _innerHasher = innerHasher;
-            _grainType = grainType;
-        }
-
         /// <summary>
         /// <see cref="IHasher.Description"/>
         /// </summary>
@@ -39,7 +30,7 @@ namespace Orleans.Storage
             // It doesn't word if string key is equal to grain type name, but we consider this edge case to be negligibly rare.
 
             if (IsGrainTypeName(data))
-                return _innerHasher.Hash(data);
+                return innerHasher.Hash(data);
 
             var extendedLength = data.Length + 8;
 
@@ -58,7 +49,7 @@ namespace Orleans.Storage
             // buffer may contain arbitrary data, setting zeros in 'extension' segment
             buffer[data.Length..].Clear();
 
-            var hash = _innerHasher.Hash(buffer);
+            var hash = innerHasher.Hash(buffer);
 
             if (rentedBuffer is not null)
                 ArrayPool<byte>.Shared.Return(rentedBuffer);
@@ -69,10 +60,10 @@ namespace Orleans.Storage
         private bool IsGrainTypeName(byte[] data)
         {
             // at least 1 byte per char
-            if (data.Length < _grainType.Length)
+            if (data.Length < grainType.Length)
                 return false;
 
-            var grainTypeByteCount = Encoding.UTF8.GetByteCount(_grainType);
+            var grainTypeByteCount = Encoding.UTF8.GetByteCount(grainType);
             if (grainTypeByteCount != data.Length)
                 return false;
 
@@ -87,7 +78,7 @@ namespace Orleans.Storage
 
             buffer = buffer[..grainTypeByteCount];
 
-            var bytesWritten = Encoding.UTF8.GetBytes(_grainType, buffer);
+            var bytesWritten = Encoding.UTF8.GetBytes(grainType, buffer);
             var isGrainType = buffer[..bytesWritten].SequenceEqual(data);
             if (rentedBuffer is not null)
                 ArrayPool<byte>.Shared.Return(rentedBuffer);

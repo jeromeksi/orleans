@@ -17,12 +17,12 @@ namespace Orleans.Storage
         /// <summary>
         /// The clause to read from the storage.
         /// </summary>
-        public string ReadFromStorage { get; set; }
+        public string ReadFromStorage { get; }
 
         /// <summary>
         /// The clause to clear the storage.
         /// </summary>
-        public string ClearState { get; set; }
+        public string ClearState { get; }
 
 
         /// <summary>
@@ -33,24 +33,9 @@ namespace Orleans.Storage
         /// <param name="clearState">The clause to clear the storage.</param>
         public RelationalStorageProviderQueries(string writeToStorage, string readFromStorage, string clearState)
         {
-            if(writeToStorage == null)
-            {
-                throw new ArgumentNullException(nameof(writeToStorage));
-            }
-
-            if(readFromStorage == null)
-            {
-                throw new ArgumentNullException(nameof(readFromStorage));
-            }
-
-            if(clearState == null)
-            {
-                throw new ArgumentNullException(nameof(clearState));
-            }
-
-            WriteToStorage = writeToStorage;
-            ReadFromStorage = readFromStorage;
-            ClearState = clearState;
+            WriteToStorage = writeToStorage ?? throw new ArgumentNullException(nameof(writeToStorage));
+            ReadFromStorage = readFromStorage ?? throw new ArgumentNullException(nameof(readFromStorage));
+            ClearState = clearState ?? throw new ArgumentNullException(nameof(clearState));
         }
     }
 }
